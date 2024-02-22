@@ -1,14 +1,31 @@
-#Import the librarys
+#QImport the librarys
 import telebot
 #Import the modules
 import functionsForBot
 import credentials
+import requests
+from flask import Flask, request 
+import time
 
 #Obtain the Token
 TOKEN = credentials.token()
 
 #Initialize bot
 bot = telebot.TeleBot(TOKEN)
+
+webServer = Flask(__name__)
+
+@webServer.route('/', methods=['POST'])
+def webHook():
+    if request.headers.get("content-type") == "aplication/json":
+        update = telebot.types.Update.de_json(request.stream.read().decode('utf-8'))
+        bot.process_new_updates([update])
+    return "Ok", 200
+
+def get_public_ip():
+    response = requests.get('https://api.ipify.org?format=json')
+    data = response.json()
+    return data['ip']
 
 #Function to respond to the /start command
 @bot.message_handler(commands=['start'])
@@ -53,4 +70,9 @@ def send_messages(message):
     
 if __name__ == "__main__":
     print("Bot iniciado -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/- -/-")
-    bot.infinity_polling()
+    severUrl = get_public_ip()
+    print("Url del servidor: ", severUrl)
+    bot.remove_webhook()
+    time.sleep(1)
+    bot.set_webhook(url=severUrl)
+    webServer.run(host="0.0.0.0", port=443)
